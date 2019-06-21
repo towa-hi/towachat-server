@@ -1,24 +1,30 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  id: {
+  number: {
     type: Number,
-    unique: true,
     required: true,
   },
-  name: {
+  username: {
     type: String,
-    unique: false,
+    unique: true,
     required: true,
   },
   handle: {
     type: String,
-    unique: true,
     required: true,
   },
   avatar: {
     type: String,
-    unique: false,
+    required: true,
+  },
+  hash: {
+    type: String,
+    unique: true,
+    required: true,
+  },
+  salt: {
+    type: String,
     required: true,
   },
 });
@@ -30,7 +36,6 @@ userSchema.statics.findByLogin = async function (login) {
   if (!user) {
     user = await this.findOne({ email: login});
   }
-
   return user;
 };
 

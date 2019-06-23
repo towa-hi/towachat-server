@@ -27,6 +27,25 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+},
+{
+  toObject: {
+    transform: function (doc, ret) {
+      delete ret._id;
+      delete ret.__v;
+      delete ret.hash;
+      delete ret.salt;
+    }
+  },
+  toJSON: {
+    transform: function (doc, ret) {
+      delete ret._id;
+      delete ret.__v;
+      delete ret.hash;
+      delete ret.salt;
+    }
+  }
+
 });
 
 userSchema.statics.findByLogin = async function (login) {

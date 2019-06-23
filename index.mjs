@@ -17,10 +17,6 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 app.use(cors());
 
-var users = {
-  mono: 'wewlad'
-};
-
 const server = app.listen(config.port, () => {
   //init socket.io server
   const io = socketIO(server);
@@ -36,15 +32,51 @@ const server = app.listen(config.port, () => {
       });
     });
     //http request stuff
-    app.get('/startingState', (req, res) => {
+    app.get('/startingState', async (req, res) => {
       var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       console.log('serving startingState for ' + ip);
-      var startingState = {
-        allUsers: getUsers(),
-        allPostData: getPosts(),
+      try {
+        let messages;
+        messages = await models.Message.find().populate('user');
+        var startingState = {
+          allUsers: getUsers(),
+          allPostData: messages
+        };
+        //console.log(startingState);
+        res.send(startingState);
+      } catch (err) {
+        res.status(500).send(err);
       }
-      return res.send(startingState);
     });
+
+    app.post('/test'), (req, res) => {
+      console.log('recieved test');
+      return res.send('test recieved');
+    }
+
+    app.post('/makePost'), async (req, res) => {
+      var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      console.log('recieving /makePost for ' + ip);
+      let newMessage;
+      await models.User.findOne({username: req.body.user}).then((postAuthor) => {
+        newMessage = new models.Message({
+          number: 42,
+          user: postAuthor,
+          time: Date.now(),
+          postText: req.body.postText
+        });
+      });
+      try {
+        let newMessageSaved = await newMessage.save();
+        res.status(201).send({response:'post created'});
+      } catch (err) {
+        if (err.name === 'MongoError' && err.code === 11000) {
+          res.status(409).send(new MyError('Duplicate key', [err.message]));
+        } else {
+          res.status(500).send(err);
+        }
+      }
+    }
 
     app.get('/userList', (req, res) => {
       console.log('received GET /userList');
@@ -52,7 +84,8 @@ const server = app.listen(config.port, () => {
     });
 
     app.get('/getMessages', (req, res) => {
-      console.log('');
+      console.log('recieved GET /getMessages');
+      return res.send('messages got')
     });
 
     app.post('/newUser', (req, res) => {
@@ -104,6 +137,24 @@ const server = app.listen(config.port, () => {
 
 });
 
+
+
+
+async function makeFakeMessage() {
+  var user = await models.User.findOne({username:'admin1'}).then(console.log('got find'));
+  var newMessage = new models.Message({
+    number: 42,
+    user: user,
+    time: 123,
+    postText: 'fake message.',
+  });
+  console.log('made new msg')
+  console.log(newMessage.user.username)
+  console.log(newMessage.postText)
+  newMessage.save()
+  return newMessage;
+}
+
 function makeNewUserData(username, password) {
   //salt and hash password
   var salt = crypto.randomBytes(16).toString('hex');
@@ -120,7 +171,7 @@ function makeNewUserData(username, password) {
   return newUserData;
 }
 
-function getPosts() {
+async function getPosts() {
   const mockUser = {
     name:'name',
     handle:'@name0',
@@ -145,8 +196,13 @@ function getPosts() {
     user:mockUser,
     postText:"this is a long post Lorem ipsum dolor sit amet",
   };
-  var messages = [mockPost1, mockPost2, mockPost3];
+  //var fakeMessage = makeFakeMessage();
+  var messages = models.Message.find().populate('user').exec(function (err, messages) {
+    console.log(messages);
+
+  });
   return messages;
+
 }
 
 function getUsers() {

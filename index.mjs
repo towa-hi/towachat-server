@@ -49,18 +49,17 @@ const server = app.listen(config.port, () => {
       }
     });
 
-    app.post('/test'), (req, res) => {
-      console.log('recieved test');
-      return res.send('test recieved');
-    }
+    app.post('/test', function (req, res) {
+      res.send('POST request to the homepage')
+    })
 
-    app.post('/makePost'), async (req, res) => {
+    app.post('/makePost', async (req, res) => {
       var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       console.log('recieving /makePost for ' + ip);
       let newMessage;
       await models.User.findOne({username: req.body.user}).then((postAuthor) => {
         newMessage = new models.Message({
-          number: 42,
+          number: 43,
           user: postAuthor,
           time: Date.now(),
           postText: req.body.postText
@@ -68,15 +67,16 @@ const server = app.listen(config.port, () => {
       });
       try {
         let newMessageSaved = await newMessage.save();
+        io.emit('newMessage', newMessage);
         res.status(201).send({response:'post created'});
       } catch (err) {
         if (err.name === 'MongoError' && err.code === 11000) {
-          res.status(409).send(new MyError('Duplicate key', [err.message]));
+          res.status(409).send(err);
         } else {
           res.status(500).send(err);
         }
       }
-    }
+    });
 
     app.get('/userList', (req, res) => {
       console.log('received GET /userList');
@@ -97,6 +97,7 @@ const server = app.listen(config.port, () => {
       if (!req.body.username || !req.body.password) {
         return res.status(400).send('SERVER: Missing username or password!');
       }
+      //find if user already exists
       models.User.countDocuments({username: req.body.username}, (err, count) => {
         if (count > 0) {
           return res.status(409).send('SERVER: A user with this specified username already exists!');
@@ -105,6 +106,7 @@ const server = app.listen(config.port, () => {
             return res.status(400).send('SERVER: Password must be between ' + MIN_PASSWORD_LENGTH + ' and ' + MAX_PASSWORD_LENGTH + ' characters long!');
           }
           var newUserData = makeNewUserData(req.body.username, req.body.password);
+          //save user
           newUserData.save().then(() => {
             console.log(newUserData);
             return res.status(200).send('SERVER: account successfully created!');

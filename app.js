@@ -14,6 +14,11 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({ secret: config.SECRET, cookie: { maxAge: 60000 }, resave: false, saveUninitialized: false }));
 
+require('./models/user');
+require('./models/message');
+require('./config/passport');
+app.use(require('./routes'));
+
 mongoose.connect(config.DATABASE_URL, {useNewUrlParser: true, autoIndex: false}, () => {
   console.log('Mongoose connected.');
 
@@ -30,6 +35,3 @@ mongoose.connect(config.DATABASE_URL, {useNewUrlParser: true, autoIndex: false},
 mongoose.set('debug', true);
 
 //Models & routes
-require('./models/user');
-require('./config/passport');
-app.use(require('./routes'));

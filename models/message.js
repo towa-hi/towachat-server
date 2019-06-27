@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const {Schema} = mongoose;
 
 const MessageSchema = new Schema({
   user: {
@@ -9,7 +10,7 @@ const MessageSchema = new Schema({
     type: Number,
     required: true,
   },
-  postText: {
+  messageText: {
     type: String,
     required: true,
   }

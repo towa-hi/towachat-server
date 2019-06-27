@@ -5,10 +5,11 @@ import mongoose from 'mongoose';
 import models, {connectDb} from './models';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import crypto from 'crypto';
+import passport from 'passport';
+import localStrategy from 'passport-local';
+import jwt from 'jsonwebtoken';
 
 const app = express();
-
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_PASSWORD_LENGTH = 128;
 const DEFAULT_AVATAR_URL = "https://i.imgur.com/Dp9Ogph.png";
@@ -16,6 +17,19 @@ const DEFAULT_AVATAR_URL = "https://i.imgur.com/Dp9Ogph.png";
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 app.use(cors());
+
+passport.use(new localStrategy({
+  usernameField: 'user[username]',
+  passwordField: 'user[password]'
+}, (username, done) => {
+  Users.findOne({username}).then((user) => {
+    if(!user || !user.validatePassword(password)) {
+      return done(null, false, {errors: 'username or password is invalid'});
+    }
+    return done(null, user);
+  }).catch(done);
+}));
+
 
 const server = app.listen(config.port, () => {
   //init socket.io server
@@ -108,7 +122,6 @@ const server = app.listen(config.port, () => {
           var newUserData = makeNewUserData(req.body.username, req.body.password);
           //save user
           newUserData.save().then(() => {
-            console.log(newUserData);
             return res.status(200).send('SERVER: account successfully created!');
           });
         }
@@ -128,11 +141,8 @@ const server = app.listen(config.port, () => {
         username: req.body.username,
         password: req.body.password
       };
-      var response = {loggedIn: false};
-      if (request.username == 'mono') {
-        response = {loggedIn: true};
-      }
-      return res.send(response);
+
+      return res.send("wew");
     });
 
   })
@@ -158,18 +168,15 @@ async function makeFakeMessage() {
 }
 
 function makeNewUserData(username, password) {
-  //salt and hash password
-  var salt = crypto.randomBytes(16).toString('hex');
-  var hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  //insert into db
   var newUserData = new models.User({
     number: 42,
     username: username,
     handle: username,
     avatar: DEFAULT_AVATAR_URL,
-    hash: hash,
-    salt: salt,
+    hash: null,
+    salt: null,
   });
+  newUserData.setPassword(password);
   return newUserData;
 }
 

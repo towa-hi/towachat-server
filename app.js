@@ -16,6 +16,7 @@ app.use(session({ secret: config.SECRET, cookie: { maxAge: 60000 }, resave: fals
 
 require('./models/user');
 require('./models/message');
+require('./models/channel');
 require('./config/passport');
 app.use(require('./routes'));
 

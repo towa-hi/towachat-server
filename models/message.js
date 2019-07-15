@@ -19,16 +19,16 @@ const MessageSchema = new Schema({
   }
 },
 {
-  // toObject: {
-  //   transform: function(doc, ret) {
-  //     delete ret.__v;
-  //   }
-  // },
-  // toJSON: {
-  //   transform: function(doc, ret) {
-  //     delete ret.__v;
-  //   }
-  // }
+  toObject: {
+    transform: function(doc, ret) {
+      delete ret.__v;
+    }
+  },
+  toJSON: {
+    transform: function(doc, ret) {
+      delete ret.__v;
+    }
+  }
 });
 
 mongoose.model('Message', MessageSchema);

@@ -35,6 +35,15 @@ const ChannelSchema = new Schema({
   officers: {
     type: [mongoose.Schema.Types.Objectid], ref: 'User',
   },
+  messages: {
+    type: [mongoose.Schema.Types.Objectid], ref: 'Message',
+  },
+  pinnedMessages: {
+    type: [mongoose.Schema.Types.Objectid], ref: 'Message',
+  },
+  alive: {
+    type: Boolean
+  }
 });
 
 mongoose.model('Channel', ChannelSchema);

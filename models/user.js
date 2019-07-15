@@ -22,6 +22,9 @@ const UserSchema = new Schema({
     type: String,
     required: true,
   },
+  channels: {
+    type: [mongoose.Schema.Types.ObjectId], ref: 'Channel',
+  }
 },
 {
   toObject: {

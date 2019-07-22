@@ -16,6 +16,10 @@ const MessageSchema = new Schema({
   messageText: {
     type: String,
     required: true,
+  },
+  alive: {
+    type: Boolean,
+    required: true,
   }
 },
 {

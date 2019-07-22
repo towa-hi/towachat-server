@@ -24,6 +24,10 @@ const UserSchema = new Schema({
   },
   channels: {
     type: [mongoose.Schema.Types.ObjectId], ref: 'Channel',
+  },
+  alive: {
+    type: Boolean,
+    required: true,
   }
 },
 {

@@ -8,10 +8,10 @@ const Channel = mongoose.model('Channel');
 const config = require('../../config/main');
 const bodyParser = require('body-parser');
 
-router.get('/allPublicChannels', auth.optional, async (req, res) => {
-
-
-});
+// router.get('/allPublicChannels', auth.optional, async (req, res) => {
+//   Channel.
+//
+// });
 
 // {
 //   "createChannelReq": {
@@ -210,5 +210,88 @@ router.post('/transferOwnership', auth.required, async(req, res) => {
     }
   });
 });
+// {
+//   "editChannelReq": {
+//     "channelId": "String",
+//     "name": "String",
+//     "description": "String",
+//     "avatar": "String",
+//     "public": "Boolean"
+//   }
+// }
+router.post('/editChannel', auth.required, async (req, res) => {
+  const {payload: {id}} = req;
+  const {body: {editChannelReq}} = req;
+  console.log('api/channels/editChannel: Started.');
+  User.findById(id).then((user) => {
+    if (user) {
+      Channel.findById(editChannelReq.channelId).then((channel) => {
+        if (channel) {
+          if (channel.owner.toString() === id) {
+            console.log(editChannelReq);
+            if (channelNameValidation(editChannelReq.name)) {
+              channel.name = editChannelReq.name;
+            } else {
+              console.log('api/channels/editChannel: name not found or failed validation.');
+            }
+            if (channelDescriptionValidation(editChannelReq.description)) {
+              channel.description = editChannelReq.description;
+            } else {
+              console.log('api/channels/editChannel: description not found or failed validation.');
+            }
+            if (channelAvatarValidation(editChannelReq.avatar)) {
+              channel.avatar = editChannelReq.avatar;
+            } else {
+              console.log('api/channels/editChannel: avatar not found or failed validation.');
+            }
+            if (editChannelReq.public) {
+              channel.public = editChannelReq.public;
+            }
+            console.log(channel);
+            channel.save().then(() => {
+              console.log('api/channels/editChannel: settings saved.');
+              res.sendStatus(200);
+            });
+          } else {
+            console.log('api/channels/editChannel: User is not the owner of this channel.');
+            res.status(422).send('SERVER: User is not the owner of this channel!');
+          }
+        } else {
+          console.log('api/channels/editChannel: Channel not found.');
+          res.status(400).send('SERVER: Channel not found!');
+        }
+      });
+    } else {
+      console.log('api/channels/editChannel: User not found.');
+      res.status(400).send('SERVER: User not found!');
+    }
+  });
+});
 
+//need a route to add or remove officers
+
+function channelNameValidation(name) {
+  if (name) {
+    if (name.length <= config.MAX_CHANNEL_NAME_LENGTH) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function channelDescriptionValidation(description) {
+  if (description) {
+    if (description.length <= config.MAX_CHANNEL_DESCRIPTION_LENGTH) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function channelAvatarValidation(avatar) {
+  if (avatar) {
+    return true;
+  }
+  return false;
+}
 module.exports = router;

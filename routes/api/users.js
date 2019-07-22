@@ -44,6 +44,7 @@ router.post('/register', auth.optional, (req, res, next) => {
           avatar: config.DEFAULT_AVATAR_URL,
           hash: null,
           salt: null,
+          alive: true,
         });
         newUser.setPassword(userReq.password);
         //save user object, then send auth token.

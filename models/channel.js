@@ -26,21 +26,21 @@ const ChannelSchema = new Schema({
     type: Boolean,
     required: true,
   },
-  members: {
-    type: [mongoose.Schema.Types.ObjectId], ref: 'User',
-  },
-  banned: {
-    type: [mongoose.Schema.Types.ObjectId], ref: 'User',
-  },
-  officers: {
-    type: [mongoose.Schema.Types.Objectid], ref: 'User',
-  },
-  messages: {
-    type: [mongoose.Schema.Types.Objectid], ref: 'Message',
-  },
-  pinnedMessages: {
-    type: [mongoose.Schema.Types.Objectid], ref: 'Message',
-  },
+  members: [{
+    type: Schema.Types.ObjectId, ref: 'User'
+  }],
+  banned: [{
+    type: Schema.Types.ObjectId, ref: 'User'
+  }],
+  officers: [{
+    type: Schema.Types.ObjectId, ref: 'User'
+  }],
+  messages: [{
+    type: Schema.Types.ObjectId, ref: 'Message'
+  }],
+  pinnedMessages: [{
+    type: Schema.Types.ObjectId, ref: 'Message'
+  }],
   alive: {
     type: Boolean
   }

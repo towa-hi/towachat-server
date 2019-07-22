@@ -25,38 +25,47 @@ router.post('/createChannel', auth.required, async (req, res) => {
   const {body: {createChannelReq}} = req;
   console.log('api/channels/createChannel: Started.');
   User.findById(id).then((owner) => {
-    new Channel({
-      owner: owner,
-      time: Date.now(),
-      name: createChannelReq.name,
-      description: createChannelReq.description,
-      avatar: config.DEFAULT_AVATAR_URL,
-      public: createChannelReq.public,
-      members: [owner],
-      alive: true,
-    }).save().then(() => {
-      if (!owner) {
-        console.log('api/channels/createCHannel: Invalid token detected.');
-        res.status(400).send('SERVER: Invalid token detected!');
+    if (owner) {
+      if (channelNameValidation(createChannelReq.name)) {
+        if (channelDescriptionValidation(createChannelReq.description)) {
+          var newChannel = new Channel({
+            owner: owner,
+            time: Date.now(),
+            name: createChannelReq.name,
+            description: createChannelReq.description,
+            avatar: config.DEFAULT_AVATAR_URL,
+            public: createChannelReq.public,
+            members: [owner],
+            alive: true,
+          });
+          newChannel.save().then(() => {
+            owner.channels.push(newChannel._id);
+            owner.save().then(() => {
+              console.log('api/channels/createChannel: Channel created.');
+              res.sendStatus(201);
+            });
+          });
+        } else {
+          console.log('api/channels/createChannel: Invalid channel description.');
+          res.status(400).send('SERVER: Invalid channel description!');
+        }
+      } else {
+        console.log('api/channels/createChannel: Invalid channel name.');
+        res.status(400).send('SERVER: Invalid channel name!');
       }
-      console.log('api/channels/createChannel: Channel created');
-      res.sendStatus(201);
-    });
+    } else {
+      console.log('api/channels/createChannel: User not found.');
+      res.status(400).send('SERVER: User not found!');
+    }
   });
 });
 
-// {
-//   "joinChannelReq": {
-//     "channelId": "String",
-//   }
-// }
-router.post('/joinChannel', auth.required, async (req, res) => {
+router.post('/joinChannel/:channelId', auth.required, async (req, res) => {
   const {payload: {id}} = req;
-  const {body: {joinChannelReq}} = req;
   console.log('api/channels/joinChannel: Started');
   User.findById(id).then((user) => {
     if (user) {
-      Channel.findById(joinChannelReq.channelId).then((channel) => {
+      Channel.findById(req.params.channelId).then((channel) => {
         if (channel) {
           if (channel.alive === true) {
             if (user.channels.indexOf(channel._id) === -1) {
@@ -89,18 +98,13 @@ router.post('/joinChannel', auth.required, async (req, res) => {
     }
   });
 });
-// {
-//   "leaveChannelReq": {
-//     "channelId": "String",
-//   }
-// }
-router.post('/leaveChannel', auth.required, async (req, res) => {
+
+router.post('/leaveChannel/:channelId', auth.required, async (req, res) => {
   const {payload: {id}} = req;
-  const {body: {leaveChannelReq}} = req;
   console.log('api/channels/leaveChannel: Started.');
   User.findById(id).then((user) => {
     if (user) {
-      Channel.findById(leaveChannelReq.channelId).then((channel) => {
+      Channel.findById(req.params.channelId).then((channel) => {
         if (channel) {
           if (channel.owner.toString() !== id) {
             var membersIndex = channel.members.indexOf(user._id);
@@ -132,18 +136,13 @@ router.post('/leaveChannel', auth.required, async (req, res) => {
     }
   });
 });
-// {
-//   "deleteChannelReq": {
-//     "channelId": "String",
-//   }
-// }
-router.post('/deleteChannel', auth.required, async (req, res) => {
+
+router.post('/deleteChannel/:channelId', auth.required, async (req, res) => {
   const {payload: {id}} = req;
-  const {body: {deleteChannelReq}} = req;
   console.log('api/channels/deleteChannel: Started.');
   User.findById(id).then((user) => {
     if (user) {
-      Channel.findById(deleteChannelReq.channelId).then((channel) => {
+      Channel.findById(req.params.channelId).then((channel) => {
         if (channel) {
           if (channel.owner.toString() === id) {
             channel.alive = false;
@@ -268,6 +267,17 @@ router.post('/editChannel', auth.required, async (req, res) => {
   });
 });
 
+router.get('/getInfo/:channelId', auth.optional, (req, res) => {
+  Channel.findById(req.params.channelId).populate('members').then((channel) => {
+    if (channel.public === true) {
+      console.log('api/channels/getInfo/: Info sent to client.');
+      res.json(channel);
+    } else {
+      res.status(400).send('SERVER: Channel not found!');
+    }
+    //else if for id for private channels here later
+  });
+});
 //need a route to add or remove officers
 
 function channelNameValidation(name) {

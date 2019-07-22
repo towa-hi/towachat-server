@@ -5,15 +5,12 @@ const auth = require('../auth');
 const User = mongoose.model('User');
 const config = require('../../config/main');
 
-// expected JSON POST input:
 // {
 //   'userReq': {
 //     'username': 'username string',
 //     'password': 'password string'
 //   }
 // }
-
-//POST register a new user (optional, everyone has access)
 router.post('/register', auth.optional, (req, res, next) => {
   console.log('api/users/register: Received a request with body: ' + JSON.stringify(req.body));
   const {body: {userReq}} = req;
@@ -57,7 +54,12 @@ router.post('/register', auth.optional, (req, res, next) => {
   }
 });
 
-//POST login route (optional, everyone has access)
+// {
+//   'userReq': {
+//     'username': 'username string',
+//     'password': 'password string'
+//   }
+// }
 router.post('/login', auth.optional, (req, res, next) => {
   console.log('api/users/login: Received a request with body: ' + JSON.stringify(req.body));
   const { body: { userReq } } = req;
@@ -95,19 +97,44 @@ router.post('/login', auth.optional, (req, res, next) => {
   }
 });
 
-//GET current user (required, only authenticated users have access)
 router.get('/current', auth.required, (req, res, next) => {
+  console.log('api/users/current: Started.');
   const {payload: {id}} = req;
-
   User.findById(id).then((user) => {
-    if (!user) {
-      console.log('api/users/current: Invalid token detected.');
-      res.status(400).send('SERVER: Invalid token detected!');
-    } else {
+    if (user) {
       console.log('api/users/current: Authentication JSON sent.');
-      res.json({ user: user.toAuthJSON() });
+      res.json({user: user.toAuthJSON()});
+    } else {
+      console.log('api/users/current: User not found.');
+      res.status(400).send('SERVER: User not found!');
     }
   });
+});
+
+router.get('/getSelfInfo', auth.required, (req, res) => {
+  console.log('api/users/getSelfInfo: Started.');
+  const {payload: {id}} = req;
+  User.findById(id).then((user) => {
+    if (user) {
+      console.log('api/users/getSelfInfo: Info sent to client.');
+      res.json({user: user.toClient()});
+    } else {
+      console.log('api/users/getSelfInfo: User not found.');
+      res.status(400).send('SERVER: User not found!');
+    }
+  });
+});
+
+router.get('/getInfo/:id', auth.optional, (req, res) => {
+  console.log('api/users/getInfo: Started.');
+  User.findById(req.params.id).populate('channels').then((user) => {
+    if (user) {
+      console.log('api/users/getInfo: Info sent to client.');
+      res.json(user);
+    } else {
+      res.status(400).send('SERVER: User not found!');
+    }
+  })
 });
 
 module.exports = router;

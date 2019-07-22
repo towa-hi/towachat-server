@@ -22,9 +22,9 @@ const UserSchema = new Schema({
     type: String,
     required: true,
   },
-  channels: {
-    type: [mongoose.Schema.Types.ObjectId], ref: 'Channel',
-  },
+  channels: [{
+    type: Schema.Types.ObjectId, ref: 'Channel'
+  }],
   alive: {
     type: Boolean,
     required: true,
@@ -77,6 +77,16 @@ UserSchema.methods.toAuthJSON = function() {
     username: this.username,
     token: this.generateJWT(),
   };
-};
+}
+
+UserSchema.methods.toClient = function() {
+  return {
+    _id: this._id,
+    channels: this.channels,
+    username: this.username,
+    avatar: this.avatar,
+    alive: this.alive
+  }
+}
 
 mongoose.model('User', UserSchema);

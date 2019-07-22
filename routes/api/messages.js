@@ -39,6 +39,9 @@ router.post('/sendMessage', auth.required, async (req, res) => {
   });
 });
 
+router.get('/:id/latest', function(req, res) {
+  res.send('the id you  sepcified is ' + req. params.id);
+});
 
 router.get('/latest', auth.optional, async (req, res) => {
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;

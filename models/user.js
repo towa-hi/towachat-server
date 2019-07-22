@@ -33,7 +33,6 @@ const UserSchema = new Schema({
 {
   toObject: {
     transform: function(doc, ret) {
-      delete ret._id;
       delete ret.__v;
       delete ret.hash;
       delete ret.salt;
@@ -41,7 +40,6 @@ const UserSchema = new Schema({
   },
   toJSON: {
     transform: function(doc, ret) {
-      delete ret._id;
       delete ret.__v;
       delete ret.hash;
       delete ret.salt;

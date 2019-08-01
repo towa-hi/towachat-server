@@ -17,9 +17,18 @@ const MessageSchema = new Schema({
     type: String,
     required: true,
   },
+  edited: {
+    type: Boolean,
+  },
+  file: {
+    type: String,
+  },
   alive: {
     type: Boolean,
     required: true,
+  },
+  edlted: {
+    type: Boolean,
   }
 },
 {

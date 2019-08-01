@@ -171,7 +171,7 @@ router.post('/deleteChannel/:channelId', auth.required, async (req, res) => {
 //     "channelId": "String",
 //   }
 // }
-router.post('/transferOwnership', auth.required, async(req, res) => {
+router.post('/transferOwnership', auth.required, async (req, res) => {
   const {payload: {id}} = req;
   const {body: {transferOwnershipReq}} = req;
   console.log('api/channels/transferOwnership: Started.');

@@ -128,7 +128,7 @@ router.get('/getSelfInfo', auth.required, (req, res) => {
 router.get('/getInfo/:id', auth.optional, (req, res) => {
   console.log('api/users/getInfo: Started.');
   User.findById(req.params.id).populate('channels').then((user) => {
-    if (user) {
+    if (user.alive) {
       console.log('api/users/getInfo: Info sent to client.');
       res.json(user);
     } else {

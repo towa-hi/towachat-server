@@ -57,7 +57,6 @@ router.get('/latest/:channelId', auth.optional, (req, res) => {
     if (channel) {
       var MessageModel = mongoose.model('Message', Message.schema, req.params.channelId);
       MessageModel.find({alive: true}).sort({'time':1}).limit(50).populate('user').then((data) => {
-        console.log(data);
         res.json(data);
       });
     } else {

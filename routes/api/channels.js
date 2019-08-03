@@ -8,11 +8,25 @@ const Channel = mongoose.model('Channel');
 const config = require('../../config/main');
 const bodyParser = require('body-parser');
 
-// router.get('/allPublicChannels', auth.optional, async (req, res) => {
-//   Channel.
-//
-// });
+router.get('/channelList', auth.optional, (req, res) => {
+  console.log('api/channels/channelList')
+  Channel.find({alive: true, public: true}).then((channelList) => {
+    console.log(channelList);
+    res.json(channelList);
+  });
+});
 
+router.get('/getInfo/:channelId', auth.optional, (req, res) => {
+  console.log('api/channels');
+  Channel.findById(req.params.channelId).populate({path: 'members', model: 'User'}).populate({path: 'banned', model: 'User'}).populate({path: 'officers', model: 'User'}).populate({path: 'pinnedMessages', model: 'Message'}).populate('owner').then((channel) => {
+    if (channel.alive && channel.public) {
+      res.json(channel);
+    } else {
+      console.log('api/channels: Channel not found.');
+      res.status(400).send('SERVER: Channel not found!');
+    }
+  });
+});
 // {
 //   "createChannelReq": {
 //     "name": "test channel",
@@ -267,18 +281,18 @@ router.post('/editChannel', auth.required, async (req, res) => {
   });
 });
 
-router.get('/getInfo/:channelId', auth.optional, (req, res) => {
-  Channel.findById(req.params.channelId).populate('members').then((channel) => {
-    if (channel.public === true) {
-      console.log('api/channels/getInfo/: Info sent to client.');
-      res.json(channel);
-    } else {
-      res.status(400).send('SERVER: Channel not found!');
-    }
-    //else if for id for private channels here later
-  });
-});
-//need a route to add or remove officers
+// router.get('/getInfo/:channelId', auth.optional, (req, res) => {
+//   Channel.findById(req.params.channelId).populate('members').then((channel) => {
+//     if (channel.public === true) {
+//       console.log('api/channels/getInfo/: Info sent to client.');
+//       res.json(channel);
+//     } else {
+//       res.status(400).send('SERVER: Channel not found!');
+//     }
+//     //else if for id for private channels here later
+//   });
+// });
+// //need a route to add or remove officers
 
 function channelNameValidation(name) {
   if (name) {

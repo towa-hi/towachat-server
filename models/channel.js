@@ -44,6 +44,18 @@ const ChannelSchema = new Schema({
   alive: {
     type: Boolean
   }
+},
+{
+  toObject: {
+    transform: function(doc, ret) {
+      delete ret.__v;
+    }
+  },
+  toJSON: {
+    transform: function(doc, ret) {
+      delete ret.__v;
+    }
+  }
 });
 
 mongoose.model('Channel', ChannelSchema);

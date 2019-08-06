@@ -8,75 +8,74 @@ const Channel = mongoose.model('Channel');
 const config = require('../../config/main');
 const bodyParser = require('body-parser');
 
-router.get('/channelList', auth.optional, (req, res) => {
-  console.log('api/channels/channelList')
+router.get('/', auth.optional, (req, res) => {
+  console.log('GET /channels: Request received.');
   Channel.find({alive: true, public: true}).then((channelList) => {
     console.log(channelList);
     res.json(channelList);
   });
 });
 
-router.get('/getInfo/:channelId', auth.optional, (req, res) => {
-  console.log('api/channels');
+router.get('/:channelId', auth.optional, (req, res) => {
+  console.log('GET /channels/:channelId: Request received.');
   Channel.findById(req.params.channelId).populate({path: 'members', model: 'User'}).populate({path: 'banned', model: 'User'}).populate({path: 'officers', model: 'User'}).populate({path: 'pinnedMessages', model: 'Message'}).populate('owner').then((channel) => {
     if (channel.alive && channel.public) {
+      console.log('GET channels/:channelId: Channel info sent.');
       res.json(channel);
     } else {
-      console.log('api/channels: Channel not found.');
-      res.status(400).send('SERVER: Channel not found!');
-    }
-  });
-});
-// {
-//   "createChannelReq": {
-//     "name": "test channel",
-//     "description": "benis",
-//     "public": "true"
-//   }
-// }
-router.post('/createChannel', auth.required, async (req, res) => {
-  const {payload: {id}} = req;
-  const {body: {createChannelReq}} = req;
-  console.log('api/channels/createChannel: Started.');
-  User.findById(id).then((owner) => {
-    if (owner) {
-      if (channelNameValidation(createChannelReq.name)) {
-        if (channelDescriptionValidation(createChannelReq.description)) {
-          var newChannel = new Channel({
-            owner: owner,
-            time: Date.now(),
-            name: createChannelReq.name,
-            description: createChannelReq.description,
-            avatar: config.DEFAULT_AVATAR_URL,
-            public: createChannelReq.public,
-            members: [owner],
-            alive: true,
-          });
-          newChannel.save().then(() => {
-            owner.channels.push(newChannel._id);
-            owner.save().then(() => {
-              console.log('api/channels/createChannel: Channel created.');
-              res.sendStatus(201);
-            });
-          });
-        } else {
-          console.log('api/channels/createChannel: Invalid channel description.');
-          res.status(400).send('SERVER: Invalid channel description!');
-        }
-      } else {
-        console.log('api/channels/createChannel: Invalid channel name.');
-        res.status(400).send('SERVER: Invalid channel name!');
-      }
-    } else {
-      console.log('api/channels/createChannel: User not found.');
-      res.status(400).send('SERVER: User not found!');
+      console.log('GET channels/:channelId/: Channel not found.');
+      res.status(400).send('SERVER: Channel not found.');
     }
   });
 });
 
-router.post('/joinChannel/:channelId', auth.required, async (req, res) => {
+// {
+//   "name":"string",
+//   "description":"string",
+//   "public":"boolean"
+// }
+router.post('/', auth.required, async (req, res) => {
+  console.log('POST /channels: Request received.');
   const {payload: {id}} = req;
-  console.log('api/channels/joinChannel: Started');
+  User.findById(id).then((owner) => {
+    if (owner) {
+      if (channelNameValidation(req.body.name)) {
+        if (channelDescriptionValidation(req.body.description)) {
+          var newChannel = new Channel({
+            owner: owner,
+            time: Date.now(),
+            name: req.body.name,
+            description: req.body.description,
+            avatar: config.DEFAULT_AVATAR_URL,
+            public: req.body.public,
+            members: [owner],
+            alive: true
+          });
+          newChannel.save().then(() => {
+            owner.channels.push(newChannel._id);
+            owner.save().then(() => {
+              console.log('POST /channels: Channel created.');
+              res.sendStatus(201);
+            });
+          });
+        } else {
+          console.log('POST /channels: Invalid channel description.');
+          res.status(400).send('SERVER: Invalid channel description.');
+        }
+      } else {
+        console.log('POST /channels: Invalid channel name.');
+        res.status(404).send('SERVER: Invalid channel name.');
+      }
+    } else {
+      console.log('POST /channels: User not found.');
+      res.status(404).send('SERVER: User not found.');
+    }
+  });
+});
+
+router.post('/:channelId/membership', auth.required, async (req, res) => {
+  console.log('POST /channels/:channelId/membership: Request received.');
+  const {payload: {id}} = req;
   User.findById(id).then((user) => {
     if (user) {
       Channel.findById(req.params.channelId).then((channel) => {
@@ -88,34 +87,34 @@ router.post('/joinChannel/:channelId', auth.required, async (req, res) => {
                 channel.members.push(user._id);
                 user.save().then(() => {
                   channel.save().then(() => {
-                    console.log('api/channels/joinChannel:', user.username, 'joined ', channel.name);
+                    console.log('POST /channels/:channelId/membership:', user.username, 'joined ', channel.name);
                     res.sendStatus(200);
                   });
                 });
               }
             } else {
-              console.log('api/channels/joinChannel: User already in channel.');
-              res.status(400).send('SERVER: User already in channel');
+              console.log('POST /channels/:channelId/membership: User already in channel.');
+              res.status(400).send('SERVER: User already in channel.');
             }
           } else {
-            console.log('api/channels/joinChannel: Channel has been deleted.');
-            res.status(400).send('SERVER: Channel has been deleted');
+            console.log('POST /channels/:channelId/membership: Channel has been deleted.');
+            res.status(404).send('SERVER: Channel has been deleted.');
           }
         } else {
-          console.log('api/channels/joinChannel: Channel not found.');
-          res.status(400).send('SERVER: Channel not found!');
+          console.log('POST /channels/:channelId/membership: Channel not found.');
+          res.status(404).send('SERVER: Channel not found.');
         }
       });
     } else {
-      console.log('api/channels/joinChannel: User not found.');
-      res.status(400).send('SERVER: User not found!');
+      console.log('POST /channels/:channelId/membership: User not found.');
+      res.status(404).send('SERVER: User not found.');
     }
   });
 });
 
-router.post('/leaveChannel/:channelId', auth.required, async (req, res) => {
+router.delete('/:channelId/membership', auth.required, async (req, res) => {
+  console.log('DELETE /channels/:channelId/membership: Request received.');
   const {payload: {id}} = req;
-  console.log('api/channels/leaveChannel: Started.');
   User.findById(id).then((user) => {
     if (user) {
       Channel.findById(req.params.channelId).then((channel) => {
@@ -131,29 +130,29 @@ router.post('/leaveChannel/:channelId', auth.required, async (req, res) => {
             }
             user.save().then(() => {
               channel.save().then(() => {
-                console.log('api/channels/leaveChannel:', user.username, 'left channel', channel.name);
+                console.log('DELETE /channels/:channelId/membership:', user.username, 'left channel', channel.name,'.');
                 res.sendStatus(200);
               });
             });
           } else {
-            console.log('api/channels/leaveChannel: The owner cannot leave their channel.');
-            res.status(400).send('SERVER: The owner cannot leave their channel. Set another user to owner before leaving.');
+            console.log('DELETE /channels/:channelId/membership: The owner cannot leave their channel.');
+            res.status(400).send('SERVER: The owner cannot leave their channel.');
           }
         } else {
-          console.log('api/channels/leaveChannel: Channel not found.');
-          res.status(400).send('SERVER: Channel not found!');
+          console.log('DELETE /channels/:channelId/membership: Channel not found.');
+          res.status(404).send('SERVER: Channel not found.');
         }
       });
     } else {
-      console.log('api/channels/leaveChannel: User not found.');
-      res.status(400).send('SERVER: User not found!');
+      console.log('DELETE /channels/:channelId/membership: The owner cannot leave their channel: User not found.');
+      res.status(404).send('SERVER: User not found.');
     }
   });
 });
 
-router.post('/deleteChannel/:channelId', auth.required, async (req, res) => {
+router.delete('/:channelId', auth.required, (req, res) => {
+  console.log('DELETE /channels/:channelId: Request received.');
   const {payload: {id}} = req;
-  console.log('api/channels/deleteChannel: Started.');
   User.findById(id).then((user) => {
     if (user) {
       Channel.findById(req.params.channelId).then((channel) => {
@@ -161,138 +160,234 @@ router.post('/deleteChannel/:channelId', auth.required, async (req, res) => {
           if (channel.owner.toString() === id) {
             channel.alive = false;
             channel.save().then(() => {
-              console.log('api/channels/deleteChannel: deleted channel.');
+              console.log('DELETE /channels/:channelId: Deleted channel.');
               res.sendStatus(200);
             });
           } else {
-            console.log('api/channels/deleteChannel: User is not the owner of this channel.');
-            res.status(422).send('SERVER: User is not the owner of this channel!');
+            console.log('DELETE /channels/:channelId: User is not the owner of this channel.');
+            res.status(401).send('SERVER: User is not the owner of this channel.');
           }
         } else {
-          console.log('api/channels/deleteChannel: Channel not found.');
-          res.status(400).send('SERVER: Channel not found!');
+          console.log('DELETE /channels/:channelId: Channel not found.');
+          res.status(404).send('SERVER: Channel not found.');
         }
       });
     } else {
-      console.log('api/channels/deleteChannel: User not found.');
-      res.status(400).send('SERVER: User not found!');
-    }
-  });
-});
-// {
-//   "transferOwnershipReq": {
-//     "userId": "String",
-//     "channelId": "String",
-//   }
-// }
-router.post('/transferOwnership', auth.required, async (req, res) => {
-  const {payload: {id}} = req;
-  const {body: {transferOwnershipReq}} = req;
-  console.log('api/channels/transferOwnership: Started.');
-  User.findById(id).then((user) => {
-    if (user) {
-      Channel.findById(transferOwnershipReq.channelId).then ((channel) => {
-        if (channel) {
-          if (channel.owner.toString() === id) {
-            User.findById(transferOwnershipReq.userId).then ((newOwner) => {
-              console.log(transferOwnershipReq.userId);
-              console.log(newOwner);
-              if (newOwner) {
-                channel.owner = newOwner;
-                channel.save().then(() => {
-                  console.log('api/channels/transferOwnership: New owner is', channel.owner.username);
-                  res.sendStatus(200);
-                });
-              } else {
-                console.log('api/channels/transferOwnership: New owner id is invalid.');
-                res.status(400).send('SERVER: New owner id is invalid!');
-              }
-            })
-          } else {
-            console.log('api/channels/transferOwnership: User is not the owner of this channel.');
-            res.status(400).send('SERVER: User is not the owner of this channel!');
-          }
-        } else {
-          console.log('api/channels/transferOwnership: Channel not found.');
-          res.status(400).send('SERVER: Channel not found!');
-        }
-      });
-    } else {
-      console.log('api/channels/transferOwnership: User not found.');
-      res.status(400).send('SERVER: User not found!');
-    }
-  });
-});
-// {
-//   "editChannelReq": {
-//     "channelId": "String",
-//     "name": "String",
-//     "description": "String",
-//     "avatar": "String",
-//     "public": "Boolean"
-//   }
-// }
-router.post('/editChannel', auth.required, async (req, res) => {
-  const {payload: {id}} = req;
-  const {body: {editChannelReq}} = req;
-  console.log('api/channels/editChannel: Started.');
-  User.findById(id).then((user) => {
-    if (user) {
-      Channel.findById(editChannelReq.channelId).then((channel) => {
-        if (channel) {
-          if (channel.owner.toString() === id) {
-            console.log(editChannelReq);
-            if (channelNameValidation(editChannelReq.name)) {
-              channel.name = editChannelReq.name;
-            } else {
-              console.log('api/channels/editChannel: name not found or failed validation.');
-            }
-            if (channelDescriptionValidation(editChannelReq.description)) {
-              channel.description = editChannelReq.description;
-            } else {
-              console.log('api/channels/editChannel: description not found or failed validation.');
-            }
-            if (channelAvatarValidation(editChannelReq.avatar)) {
-              channel.avatar = editChannelReq.avatar;
-            } else {
-              console.log('api/channels/editChannel: avatar not found or failed validation.');
-            }
-            if (editChannelReq.public) {
-              channel.public = editChannelReq.public;
-            }
-            console.log(channel);
-            channel.save().then(() => {
-              console.log('api/channels/editChannel: settings saved.');
-              res.sendStatus(200);
-            });
-          } else {
-            console.log('api/channels/editChannel: User is not the owner of this channel.');
-            res.status(422).send('SERVER: User is not the owner of this channel!');
-          }
-        } else {
-          console.log('api/channels/editChannel: Channel not found.');
-          res.status(400).send('SERVER: Channel not found!');
-        }
-      });
-    } else {
-      console.log('api/channels/editChannel: User not found.');
-      res.status(400).send('SERVER: User not found!');
+      console.log('DELETE /channels/:channelId: User not found.');
+      res.status(404).send('SERVER: User not found.');
     }
   });
 });
 
-// router.get('/getInfo/:channelId', auth.optional, (req, res) => {
-//   Channel.findById(req.params.channelId).populate('members').then((channel) => {
-//     if (channel.public === true) {
-//       console.log('api/channels/getInfo/: Info sent to client.');
-//       res.json(channel);
-//     } else {
-//       res.status(400).send('SERVER: Channel not found!');
-//     }
-//     //else if for id for private channels here later
-//   });
-// });
-// //need a route to add or remove officers
+router.patch('/:channelId/transferOwnership/:userId', auth.required, async (req, res) => {
+  console.log('PATCH /channels/:channelId/transferOwnership: Request received.');
+  const {payload: {id}} = req;
+  User.findById(id).then((user) => {
+    if (user) {
+      Channel.findById(req.params.channelId).then ((channel) => {
+        if (channel) {
+          if (channel.owner.toString() === id) {
+            User.findById(req.params.userId).then ((newOwner) => {
+              if (newOwner) {
+                channel.owner = newOwner;
+                channel.save().then(() => {
+                  console.log('PATCH /channels/:channelId/transferOwnership: New owner is', channel.owner.username,'.');
+                  res.sendStatus(200);
+                });
+              } else {
+                console.log('PATCH /channels/:channelId/transferOwnership: New owner not found.');
+                res.status(404).send('SERVER: New owner not found.');
+              }
+            })
+          } else {
+            console.log('PATCH /channels/:channelId/transferOwnership: User is not the owner of this channel.');
+            res.status(401).send('SERVER: User is not the owner of this channel.');
+          }
+        } else {
+          console.log('PATCH /channels/:channelId/transferOwnership: Channel not found.');
+          res.status(404).send('SERVER: Channel not found.');
+        }
+      });
+    } else {
+      console.log('PATCH /channels/:channelId/transferOwnership: User not found.');
+      res.status(404).send('SERVER: User not found.');
+    }
+  });
+});
+
+// {
+//   "name":"string",
+//   "description":"string",
+//   "avatar":"string",
+//   "public":"boolean"
+// }
+router.patch('/:channelId', auth.required, async (req, res) => {
+  console.log('PATCH /channels/:channelId: Request received.');
+  const {payload: {id}} = req;
+  User.findById(id).then((user) => {
+    if (user) {
+      Channel.findById(req.params.channelId).then((channel) => {
+        if (channel) {
+          if (channel.owner.toString() === id) {
+            if (channelNameValidation(req.body.name)) {
+              channel.name = req.body.name;
+            } else {
+              console.log('PATCH /channels/:channelId: Name not found or failed validation.');
+            }
+            if (channelDescriptionValidation(req.body.description)) {
+              channel.description = req.body.description;
+            } else {
+              console.log('PATCH /channels/:channelId: Description not found or failed validation.');
+            }
+            if (channelAvatarValidation(req.body.avatar)) {
+              channel.avatar = req.body.avatar;
+            } else {
+              console.log('PATCH /channels/:channelId: Avatar not found or failed validation.');
+            }
+            if (req.body.public) {
+              channel.public = req.body.public;
+            }
+            console.log(channel);
+            channel.save().then(() => {
+              console.log('PATCH /channels/:channelId: Settings saved.');
+              res.sendStatus(200);
+            });
+          } else {
+            console.log('PATCH /channels/:channelId: User is not the owner of this channel.');
+            res.status(401).send('SERVER: User is not the owner of this channel.');
+          }
+        } else {
+          console.log('PATCH /channels/:channelId: Channel not found.');
+          res.status(404).send('SERVER: Channel not found.');
+        }
+      });
+    } else {
+      console.log('PATCH /channels/:channelId: User not found.');
+      res.status(404).send('SERVER: User not found.');
+    }
+  });
+});
+
+// {
+//   "messageText":"string"
+// }
+router.post('/:channelId/message', auth.required, async (req, res) => {
+  console.log('POST /channels/:channelId/message: Request received.');
+  const {payload: {id}} = req;
+  if (messageTextValidation(req.body.messageText)) {
+    User.findById(id).then((user) => {
+      if (user) {
+        Channel.findById(req.params.channelId).then((channel) => {
+          if (channel) {
+            var MessageModel = mongoose.model('Message', Message.schema, req.params.channelId);
+            MessageData = new MessageModel({
+              user: user,
+              time: Date.now(),
+              channel: req.params.channelId,
+              messageText: req.body.messageText,
+              edited: false,
+              alive: true
+            });
+            MessageData.save().then(() => {
+              console.log('POST /channels/:channelId/message: Post made.');
+              res.sendStatus(201);
+            });
+          } else {
+            console.log('POST /channels/:channelId/message: Channel not found.');
+            res.status(404).send('SERVER: Channel not found.');
+          }
+        });
+      } else {
+        console.log('POST /channels/:channelId/message: User not found.');
+        res.status(404).send('SERVER: User not found.');
+      }
+    });
+  }
+});
+//change this to do 50 at a time later
+router.get('/:channelId/message', auth.optional, async (req, res) => {
+  console.log('GET /channels/:channelId/message: Request received.');
+  Channel.findById(req.params.channelId).then((channel) => {
+    if (channel) {
+      getMessageModel(req.params.channelId).find({alive: true}).sort({'time':1}).limit(50).populate('user').then((data) => {
+        console.log('GET /channels/:channelId/message: Sending messages.')
+        res.json(data);
+      });
+    } else {
+      console.log('GET /channels/:channelId/message: Channel not found.');
+      res.status(404).send('SERVER: Channel not found.');
+    }
+  });
+});
+
+router.delete('/:channelId/message/:messageId', auth.required, async (req, res) => {
+  console.log('DELETE /channels/:channelId/message/:messageId: Request received.');
+  const {payload: {id}} = req;
+  Channel.findById(req.params.channelId).then((channel) => {
+    if (channel) {
+      getMessageModel(req.params.channelId).findById(req.params.messageId).then((message) => {
+        if (message) {
+          if (message.user.toString() === id || channel.officers.includes(message.user) || message.user === channel.owner) {
+            message.alive = false;
+            message.save();
+            console.log('DELETE /channels/:channelId/message/:messageId: Deleted message.');
+            res.sendStatus(200);
+          } else {
+            console.log('DELETE /channels/:channelId/message/:messageId: Insufficient permissions.');
+            res.status(401).send('SERVER: Insufficient permissions.');
+          }
+        } else {
+          console.log('DELETE /channels/:channelId/message/:messageId: Message not found.');
+          res.status(404).send('SERVER: Message not found.');
+        }
+      });
+    } else {
+      console.log('DELETE /channels/:channelId/message/:messageId: Channel not found.');
+      res.status(404).send('SERVER: Channel not found.');
+    }
+  });
+});
+
+router.patch('/:channelId/message/:messageId', auth.required, async (req, res) => {
+  console.log('PATCH /channels/:channelId/message/:messageId: Request received.');
+  const {payload: {id}} = req;
+  if (messageTextValidation(req.body.messageText)) {
+    Channel.findById(req.params.channelId).then((channel) => {
+      if (channel) {
+        getMessageModel(req.params.channelId).findById(req.params.messageId).then((message) => {
+          if (message.alive) {
+            if (message.user.toString() === id) {
+              message.edited = true;
+              message.messageText = req.body.messageText;
+              message.save().then(() => {
+                console.log('PATCH /channels/:channelId/message/:messageId: Message edited.');
+                res.sendStatus(200);
+              });
+            } else {
+              console.log('PATCH /channels/:channelId/message/:messageId: Insufficient permissions.');
+              res.status(401).send('SERVER: Insufficient permissions.');
+            }
+          } else {
+            console.log('PATCH /channels/:channelId/message/:messageId: Message not found.');
+            res.status(404).send('SERVER: Message not found.');
+          }
+        });
+      } else {
+        console.log('PATCH /channels/:channelId/message/:messageId: Channel not found.');
+        res.status(404).send('SERVER: Channel not found.');
+      }
+    })
+  } else {
+    console.log('PATCH /channels/:channelId/message/:messageId: Invalid message text.');
+    res.status(400).send('SERVER: Invalid message text.');
+  }
+});
+
+
+function getMessageModel(channelId) {
+  var MessageModel = mongoose.model('Message', Message.schema, channelId);
+  return MessageModel
+}
 
 function channelNameValidation(name) {
   if (name) {
@@ -306,6 +401,15 @@ function channelNameValidation(name) {
 function channelDescriptionValidation(description) {
   if (description) {
     if (description.length <= config.MAX_CHANNEL_DESCRIPTION_LENGTH) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function messageTextValidation(messageText) {
+  if (messageText) {
+    if (messageText.length <= config.MAX_MESSAGE_LENGTH) {
       return true;
     }
   }

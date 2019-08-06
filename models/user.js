@@ -10,6 +10,9 @@ const UserSchema = new Schema({
     required: true,
     unique: true,
   },
+  handle: {
+    type: String,
+  },
   hash: {
     type: String,
     required: true,
@@ -73,6 +76,8 @@ UserSchema.methods.toAuthJSON = function() {
   return {
     _id: this._id,
     username: this.username,
+    avatar: this.avatar,
+    channels: this.channels,
     token: this.generateJWT(),
   };
 }

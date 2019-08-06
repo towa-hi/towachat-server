@@ -32,7 +32,6 @@ router.post('/sendMessage/', auth.required, async (req, res) => {
               messageText: sendMessageReq.messageText,
               edited: false,
               alive: true,
-              edited: false
             });
             messageData.save();
           } else {
@@ -72,7 +71,7 @@ router.get('/latest/:channelId', auth.optional, (req, res) => {
 //     "messageId": "5d42950be0dbd20bb42c0cc1"
 //   }
 // }
-router.post('/delete/', auth.required, async (req, res) => {
+router.delete('/delete/', auth.required, async (req, res) => {
   const {payload: {id}} = req;
   const {body: {deleteMessageReq}} = req;
   console.log('api/messages/delete: Deleting a message.');

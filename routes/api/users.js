@@ -4,7 +4,7 @@ const router = require('express').Router();
 const auth = require('../auth');
 const User = mongoose.model('User');
 const config = require('../../config/main');
-
+const Validator = require('validator');
 
 // {
 //   "username":"string",
@@ -12,8 +12,9 @@ const config = require('../../config/main');
 // }
 router.post('/register', auth.optional, (req, res) => {
   console.log('POST /users/register: Request received.');
-  if (usernameValidation(req.body.username)) {
-    if (passwordValidation(req.body.password)) {
+
+  if (validateUsername(req.body.username)) {
+    if (validatePassword(req.body.password)) {
       User.findOne({username: req.body.username}).then((result) => {
         if (!result) {
           var newUser = new User({
@@ -51,15 +52,14 @@ router.post('/register', auth.optional, (req, res) => {
 // }
 router.post('/login', auth.optional, (req, res, next) => {
   console.log('POST /users/login: Request received.');
-  if (usernameValidation(req.body.username)) {
-    if (passwordValidation(req.body.password)) {
+  if (validateUsername(req.body.username)) {
+    if (validatePassword(req.body.password)) {
       passport.authenticate('local', {session: false}, (err, passportUser, info) => {
         if (err) {
           console.log(err);
           next(err);
         }
-        if(passportUser.alive) {
-          console.log('wew lad');
+        if (passportUser.alive) {
           console.log('POST /users/login: Authentication JSON sent.');
           res.json(passportUser.toAuthJSON());
         } else if (info == 'invalidUsername') {
@@ -82,11 +82,14 @@ router.post('/login', auth.optional, (req, res, next) => {
 
 router.get('/self', auth.required, (req, res) => {
   console.log('GET /users/self: Request received.');
+  console.time('getSelf');
   const {payload: {id}} = req;
   User.findById(id).populate('channels').then((user) => {
+
     if (user.alive) {
       console.log('GET /users/self: Info sent.');
-      res.json(user);
+      res.json(user.toAuthJSON());
+      console.timeEnd('getSelf');
     } else {
       console.log('GET /users/self: User not found.');
       res.status(400).send('SERVER: User not found.');
@@ -114,21 +117,21 @@ router.get('/:userId', auth.optional, (req, res) => {
 router.patch('/self', auth.required, (req, res) => {
   console.log('PATCH /users/self: Request received.');
   const {payload: {id}} = req;
-  User.findById(req.params.userId).populate('channels').then((user) => {
+  User.findById(id).populate('channels').then((user) => {
     if (user.alive) {
-      if (avatarValidation(req.body.avatar)) {
+      if (validateAvatar(req.body.avatar)) {
         user.avatar = req.body.avatar;
       } else {
         console.log('PATCH /users/self: Invalid avatar.');
       }
-      if (handleValidation(req.body.handle)) {
+      if (validateHandle(req.body.handle)) {
         user.handle = req.body.handle;
       } else {
         console.log('PATCH /users/self: Invalid handle.');
       }
       user.save().then(() => {
         console.log('PATCH /users/self: Edited user.');
-        res.sendStatus(200);
+        res.json(user.toAuthJSON());
       });
     } else {
       console.log('PATCH /users/self: User not found.');
@@ -137,38 +140,53 @@ router.patch('/self', auth.required, (req, res) => {
   });
 });
 
-function usernameValidation(name) {
-  if (name) {
-    if (name.length <= config.MAX_USERNAME_LENGTH) {
+router.patch('/prune', auth.required, (req, res) => {
+  console.log('PATCH /users/prune: Request received.');
+  const {payload: {id}} = req;
+  User.findById(id).populate('channels').then((user) => {
+    if (user) {
+      for (key in user.channels) {
+        console.log(user.channels[key]);
+        channel = user.channels[key];
+        if (channel.alive == false) {
+          user.channels.remove(channel._id);
+        }
+      }
+      user.save().then(() => {
+        console.log(user);
+        res.sendStatus(200);
+      });
+    }
+  });
+  res.status(200);
+});
+
+function validateUsername(username) {
+  if (Validator.isAlphanumeric(username)) {
+    if (Validator.isLength(username, config.MIN_USERNAME_LENGTH, config.MAX_USERNAME_LENGTH)) {
       return true;
     }
   }
   return false;
 }
 
-function passwordValidation(password) {
-  if (password) {
-    if (password.length > config.MIN_PASSWORD_LENGTH && password.length < config.MAX_PASSWORD_LENGTH) {
-      return true;
-    }
+function validatePassword(password) {
+  if (Validator.isLength(password, config.MIN_PASSWORD_LENGTH, config.MAX_PASSWORD_LENGTH)) {
+    return true;
   }
   return false;
 }
 
-function avatarValidation(avatar) {
-  if (avatar) {
-    if (avatar.length > 100) {
-      return true;
-    }
+function validateAvatar(avatar) {
+  if (Validator.isURL(avatar)) {
+    return true;
   }
   return false;
 }
 
-function handleValidation(handle) {
-  if (handle) {
-    if (handle.length <= config.MAX_HANDLE_LENGTH) {
-      return true;
-    }
+function validateHandle(handle) {
+  if (Validator.isLength(handle, config.MIN_HANDLE_LENGTH, config.MAX_HANDLE_LENGTH)) {
+    return true;
   }
   return false;
 }

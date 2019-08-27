@@ -5,13 +5,15 @@ const auth = require('../auth');
 const User = mongoose.model('User');
 const Message = mongoose.model('Message');
 const Channel = mongoose.model('Channel');
+const Validator = require('validator');
 const config = require('../../config/main');
 const bodyParser = require('body-parser');
 
 router.get('/', auth.optional, (req, res) => {
   console.log('GET /channels: Request received.');
+  console.time('getChannels');
   Channel.find({alive: true, public: true}).then((channelList) => {
-    console.log(channelList);
+    console.timeEnd('getChannels');
     res.json(channelList);
   });
 });
@@ -155,14 +157,24 @@ router.delete('/:channelId', auth.required, (req, res) => {
   const {payload: {id}} = req;
   User.findById(id).then((user) => {
     if (user) {
-      Channel.findById(req.params.channelId).then((channel) => {
+      Channel.findById(req.params.channelId).populate({path: 'members', model: 'User'}).then((channel) => {
         if (channel) {
           if (channel.owner.toString() === id) {
             channel.alive = false;
+            channel.owner = null;
             channel.save().then(() => {
-              console.log('DELETE /channels/:channelId: Deleted channel.');
               res.sendStatus(200);
             });
+            // channel.save().then(() => {
+            //   console.log('DELETE /channels/:channelId: Deleted channel.');
+            //   for (key in channel.members) {
+            //     var member = channel.members[key];
+            //     User.updateOne({_id: member._id}, {$pull: {'channels': channel._id}}, () => {
+            //       console.log('DELETE /channels/:channelId: ' + member + ' updated.');
+            //     });
+            //   }
+            //   res.sendStatus(200);
+            // });
           } else {
             console.log('DELETE /channels/:channelId: User is not the owner of this channel.');
             res.status(401).send('SERVER: User is not the owner of this channel.');
@@ -229,17 +241,17 @@ router.patch('/:channelId', auth.required, async (req, res) => {
       Channel.findById(req.params.channelId).then((channel) => {
         if (channel) {
           if (channel.owner.toString() === id) {
-            if (channelNameValidation(req.body.name)) {
+            if (validateChannelName(req.body.name)) {
               channel.name = req.body.name;
             } else {
               console.log('PATCH /channels/:channelId: Name not found or failed validation.');
             }
-            if (channelDescriptionValidation(req.body.description)) {
+            if (validateChannelDescription(req.body.description)) {
               channel.description = req.body.description;
             } else {
               console.log('PATCH /channels/:channelId: Description not found or failed validation.');
             }
-            if (channelAvatarValidation(req.body.avatar)) {
+            if (validateChannelAvatar(req.body.avatar)) {
               channel.avatar = req.body.avatar;
             } else {
               console.log('PATCH /channels/:channelId: Avatar not found or failed validation.');
@@ -383,26 +395,29 @@ router.patch('/:channelId/message/:messageId', auth.required, async (req, res) =
   }
 });
 
-
 function getMessageModel(channelId) {
-  var MessageModel = mongoose.model('Message', Message.schema, channelId);
-  return MessageModel
+  return mongoose.model('Message', Message.schema, channelId);
 }
 
-function channelNameValidation(name) {
-  if (name) {
-    if (name.length <= config.MAX_CHANNEL_NAME_LENGTH) {
+function validateChannelName(channelName) {
+  if (Validator.isLength(channelName, config.MIN_CHANNEL_NAME_LENGTH, config.MAX_CHANNEL_NAME_LENGTH)) {
+    if (Validator.isAlphanumeric(channelName)) {
       return true;
     }
   }
   return false;
 }
 
-function channelDescriptionValidation(description) {
-  if (description) {
-    if (description.length <= config.MAX_CHANNEL_DESCRIPTION_LENGTH) {
-      return true;
-    }
+function validateChannelDescription(channelDescription) {
+  if (Validator.isLength(channelDescription, config.MIN_CHANNEL_DESCRIPTION_LENGTH, config.MAX_CHANNEL_DESCRIPTION_LENGTH)) {
+    return true;
+  }
+  return false;
+}
+
+function validateChannelAvatar(avatar) {
+  if (Validator.isURL(avatar)) {
+    return true;
   }
   return false;
 }
@@ -416,10 +431,4 @@ function messageTextValidation(messageText) {
   return false;
 }
 
-function channelAvatarValidation(avatar) {
-  if (avatar) {
-    return true;
-  }
-  return false;
-}
 module.exports = router;

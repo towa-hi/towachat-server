@@ -8,7 +8,7 @@ passport.use(new LocalStrategy({
   usernameField: 'username',
   passwordField: 'password',
 }, (username, password, done) => {
-  User.findOne({username}).then((user) => {
+  User.findOne({username}).populate('channels').then((user) => {
     if (!user) {
       return done(null, false, 'invalidUsername');
     }

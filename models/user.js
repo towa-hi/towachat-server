@@ -76,8 +76,10 @@ UserSchema.methods.toAuthJSON = function() {
   return {
     _id: this._id,
     username: this.username,
+    handle: this.handle,
     avatar: this.avatar,
     channels: this.channels,
+    alive: this.alive,
     token: this.generateJWT(),
   };
 }
@@ -85,9 +87,10 @@ UserSchema.methods.toAuthJSON = function() {
 UserSchema.methods.toClient = function() {
   return {
     _id: this._id,
-    channels: this.channels,
     username: this.username,
+    handle: this.handle,
     avatar: this.avatar,
+    channels: this.channels,
     alive: this.alive
   }
 }

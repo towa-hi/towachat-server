@@ -286,7 +286,7 @@ router.patch('/:channelId', auth.required, async (req, res) => {
 router.post('/:channelId/message', auth.required, async (req, res) => {
   console.log('POST /channels/:channelId/message: Request received.');
   const {payload: {id}} = req;
-  if (messageTextValidation(req.body.messageText)) {
+  if (validateMessage(req.body.messageText)) {
     User.findById(id).then((user) => {
       if (user) {
         Channel.findById(req.params.channelId).then((channel) => {
@@ -422,11 +422,9 @@ function validateChannelAvatar(avatar) {
   return false;
 }
 
-function messageTextValidation(messageText) {
-  if (messageText) {
-    if (messageText.length <= config.MAX_MESSAGE_LENGTH) {
-      return true;
-    }
+function validateMessage(messageText) {
+  if (Validator.isLength(messageText, 0, config.MAX_MESSAGE_LENGTH)) {
+    return true;
   }
   return false;
 }

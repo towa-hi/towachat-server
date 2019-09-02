@@ -99,7 +99,7 @@ router.get('/self', auth.required, (req, res) => {
 
 router.get('/:userId', auth.optional, (req, res) => {
   console.log('GET /users/:userId: Request received.');
-  User.findById(req.params.userId).populate('channels').then((user) => {
+  User.findById(req.params.userId).then((user) => {
     if (user.alive) {
       console.log('GET /users/:userId: Info sent.');
       res.json(user);

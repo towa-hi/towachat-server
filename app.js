@@ -28,7 +28,7 @@ mongoose.connect(config.DATABASE_URL, {useNewUrlParser: true, autoIndex: false},
     const io = socketIO(server);
     io.sockets.on('connection', (socket) => {
       console.log('Socket.io: User connected with socket id: ' + socket.id);
-      socket.on('room', (room) => {
+      socket.on('join', (room) => {
         socket.join(room);
         console.log('socket joined: ', room);
         var userConnected = {

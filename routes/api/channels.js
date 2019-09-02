@@ -20,7 +20,7 @@ router.get('/', auth.optional, (req, res) => {
 
 router.get('/:channelId', auth.optional, (req, res) => {
   console.log('GET /channels/:channelId: Request received.');
-  Channel.findById(req.params.channelId).populate({path: 'members', model: 'User'}).populate({path: 'banned', model: 'User'}).populate({path: 'officers', model: 'User'}).populate({path: 'pinnedMessages', model: 'Message'}).populate('owner').then((channel) => {
+  Channel.findById(req.params.channelId).then((channel) => {
     if (channel.alive && channel.public) {
       console.log('GET channels/:channelId: Channel info sent.');
       res.json(channel);
@@ -41,8 +41,8 @@ router.post('/', auth.required, async (req, res) => {
   const {payload: {id}} = req;
   User.findById(id).then((owner) => {
     if (owner) {
-      if (channelNameValidation(req.body.name)) {
-        if (channelDescriptionValidation(req.body.description)) {
+      if (validateChannelName(req.body.name)) {
+        if (validateChannelDescription(req.body.description)) {
           var newChannel = new Channel({
             owner: owner,
             time: Date.now(),
@@ -122,6 +122,7 @@ router.delete('/:channelId/membership', auth.required, async (req, res) => {
       Channel.findById(req.params.channelId).then((channel) => {
         if (channel) {
           if (channel.owner.toString() !== id) {
+            //replace this with better code using update()
             var membersIndex = channel.members.indexOf(user._id);
             if (membersIndex !== -1) {
               channel.members.splice(membersIndex, 1);
@@ -151,30 +152,29 @@ router.delete('/:channelId/membership', auth.required, async (req, res) => {
     }
   });
 });
-
+//use a socket to tell member sthey're baleeted before kicking them.
 router.delete('/:channelId', auth.required, (req, res) => {
   console.log('DELETE /channels/:channelId: Request received.');
   const {payload: {id}} = req;
   User.findById(id).then((user) => {
     if (user) {
-      Channel.findById(req.params.channelId).populate({path: 'members', model: 'User'}).then((channel) => {
+      Channel.findById(req.params.channelId).then((channel) => {
         if (channel) {
+          for (key in channel.members) {
+            User.findById(channel.members[key]).then((member) => {
+              //replace this with better code using update()
+              var channelsIndex = member.channels.indexOf(channel._id);
+              if (channelsIndex !== -1) {
+                member.channels.splice(channelsIndex, 1);
+                member.save();
+              }
+            });
+          }
           if (channel.owner.toString() === id) {
             channel.alive = false;
-            channel.owner = null;
             channel.save().then(() => {
               res.sendStatus(200);
             });
-            // channel.save().then(() => {
-            //   console.log('DELETE /channels/:channelId: Deleted channel.');
-            //   for (key in channel.members) {
-            //     var member = channel.members[key];
-            //     User.updateOne({_id: member._id}, {$pull: {'channels': channel._id}}, () => {
-            //       console.log('DELETE /channels/:channelId: ' + member + ' updated.');
-            //     });
-            //   }
-            //   res.sendStatus(200);
-            // });
           } else {
             console.log('DELETE /channels/:channelId: User is not the owner of this channel.');
             res.status(401).send('SERVER: User is not the owner of this channel.');
@@ -316,6 +316,15 @@ router.post('/:channelId/message', auth.required, async (req, res) => {
     });
   }
 });
+
+// router.get('/:channelId/:messageId', auth.optional, async (req, res) => {
+//   Channel.findById(req.params.channelId).then((channel) => {
+//     if (channel) {
+//       getMessageModel(req.params.channelId).find({alive: true}).sort({'time':1}).limit()
+//     }
+//   })
+// });
+
 //change this to do 50 at a time later
 router.get('/:channelId/message', auth.optional, async (req, res) => {
   console.log('GET /channels/:channelId/message: Request received.');
@@ -332,9 +341,12 @@ router.get('/:channelId/message', auth.optional, async (req, res) => {
   });
 });
 
+
+
 router.delete('/:channelId/message/:messageId', auth.required, async (req, res) => {
   console.log('DELETE /channels/:channelId/message/:messageId: Request received.');
   const {payload: {id}} = req;
+  //kick everyone out before deleting channel
   Channel.findById(req.params.channelId).then((channel) => {
     if (channel) {
       getMessageModel(req.params.channelId).findById(req.params.messageId).then((message) => {
